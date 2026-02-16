@@ -1,7 +1,7 @@
 // src/app/api/users/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { usersInMemory } from '@/lib/mock/data';
 import { verifyJwt } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { profileUpdateSchema } from '@/lib/validation/user.schema';
 
 export async function GET(request: NextRequest) {
@@ -16,25 +16,38 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
         }
 
-        const user = usersInMemory.find(u => u.id === payload.id);
-        if (!user) {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', payload.id)
+            .single();
+
+        if (error || !user) {
             return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
         }
 
-        // Devolver solo datos no sensibles
-        const { passwordHash, ...safeUser } = user;
-
-        return NextResponse.json(safeUser, { status: 200 });
+        return NextResponse.json({
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            ci: user.ci,
+            phone: user.phone,
+            email: user.email,
+            address: {
+                street: user.address_street,
+                number: user.address_number,
+                between: [user.address_between1, user.address_between2],
+                neighborhood: user.address_neighborhood,
+                municipality: user.address_municipality,
+                province: user.address_province,
+            },
+            role: user.role,
+        }, { status: 200 });
     } catch (error) {
         console.error('Error al obtener perfil:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }
-
-// ... después de GET
 
 export async function PUT(request: NextRequest) {
     try {
@@ -51,33 +64,56 @@ export async function PUT(request: NextRequest) {
         const body = await request.json();
         const result = profileUpdateSchema.safeParse(body);
         if (!result.success) {
-            return NextResponse.json(
-                { error: 'Datos inválidos', details: result.error.flatten().fieldErrors },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
         }
 
-        const index = usersInMemory.findIndex(u => u.id === payload.id);
-        if (index === -1) {
-            return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+        const { firstName, lastName, phone, address } = result.data;
+
+        const { error } = await supabase
+            .from('users')
+            .update({
+                first_name: firstName,
+                last_name: lastName,
+                phone,
+                address_street: address.street,
+                address_number: address.number,
+                address_between1: address.between[0],
+                address_between2: address.between[1],
+                address_neighborhood: address.neighborhood,
+                address_municipality: address.municipality,
+                address_province: address.province,
+            })
+            .eq('id', payload.id);
+
+        if (error) {
+            return NextResponse.json({ error: 'Error al actualizar perfil' }, { status: 500 });
         }
 
-        // Actualizar solo campos permitidos
-        usersInMemory[index] = {
-            ...usersInMemory[index],
-            firstName: result.data.firstName,
-            lastName: result.data.lastName,
-            phone: result.data.phone,
-            address: result.data.address,
-        };
+        const { data: updatedUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', payload.id)
+            .single();
 
-        const { passwordHash, ...safeUser } = usersInMemory[index];
-        return NextResponse.json(safeUser, { status: 200 });
+        return NextResponse.json({
+            id: updatedUser.id,
+            firstName: updatedUser.first_name,
+            lastName: updatedUser.last_name,
+            ci: updatedUser.ci,
+            phone: updatedUser.phone,
+            email: updatedUser.email,
+            address: {
+                street: updatedUser.address_street,
+                number: updatedUser.address_number,
+                between: [updatedUser.address_between1, updatedUser.address_between2],
+                neighborhood: updatedUser.address_neighborhood,
+                municipality: updatedUser.address_municipality,
+                province: updatedUser.address_province,
+            },
+            role: updatedUser.role,
+        }, { status: 200 });
     } catch (error) {
         console.error('Error al actualizar perfil:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

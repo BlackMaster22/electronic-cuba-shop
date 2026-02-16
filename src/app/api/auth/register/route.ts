@@ -3,17 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { registerSchema } from '@/lib/validation/user.schema';
 import { hashPassword } from '@/lib/auth';
 import { generateJwt, generateCsrfToken, setAuthCookies } from '@/lib/auth';
-import { UserWithPasswordHash } from '@/types';
-import { usersInMemory } from '@/lib/mock/data';
-
-function isEmailOrCiTaken(email: string, ci: string): boolean {
-    return usersInMemory.some(user => user.email === email || user.ci === ci);
-}
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const result = registerSchema.safeParse(body);
+
         if (!result.success) {
             return NextResponse.json(
                 { error: 'Datos inválidos', details: result.error.flatten().fieldErrors },
@@ -31,7 +27,21 @@ export async function POST(request: NextRequest) {
             address,
         } = result.data;
 
-        if (isEmailOrCiTaken(email, ci)) {
+        // Verificar si email o CI ya existen (consulta a Supabase)
+        const { data: existingUsers, error: checkError } = await supabase
+            .from('users')
+            .select('id')
+            .or(`email.eq.${email},ci.eq.${ci}`);
+
+        if (checkError) {
+            console.error('Error checking existing user:', checkError);
+            return NextResponse.json(
+                { error: 'Error al verificar usuario' },
+                { status: 500 }
+            );
+        }
+
+        if (existingUsers && existingUsers.length > 0) {
             return NextResponse.json(
                 { error: 'El correo electrónico o carnet de identidad ya están registrados' },
                 { status: 409 }
@@ -39,36 +49,53 @@ export async function POST(request: NextRequest) {
         }
 
         const hashedPassword = await hashPassword(password);
+        const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        const newUser: UserWithPasswordHash = {
-            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            firstName,
-            lastName,
-            ci,
-            phone,
-            email,
-            address,
-            role: 'cliente',
-            passwordHash: hashedPassword,
-        };
+        // Insertar en Supabase
+        const { error: insertError } = await supabase
+            .from('users')
+            .insert([{
+                id: userId,
+                first_name: firstName,
+                last_name: lastName,
+                ci,
+                phone,
+                email,
+                password_hash: hashedPassword,
+                address_street: address.street,
+                address_number: address.number,
+                address_between1: address.between[0],
+                address_between2: address.between[1],
+                address_neighborhood: address.neighborhood,
+                address_municipality: address.municipality,
+                address_province: address.province,
+                role: 'cliente',
+            }]);
 
-        usersInMemory.push(newUser);
+        if (insertError) {
+            console.error('Error inserting user:', insertError);
+            return NextResponse.json(
+                { error: 'Error al crear usuario' },
+                { status: 500 }
+            );
+        }
 
-        const jwtToken = await generateJwt({ id: newUser.id, role: newUser.role });
+        // Generar tokens
+        const jwtToken = await generateJwt({ id: userId, role: 'cliente' });
         const csrfToken = generateCsrfToken();
 
         const response = NextResponse.json(
             {
                 message: 'Registro exitoso',
                 user: {
-                    id: newUser.id,
-                    firstName: newUser.firstName,
-                    lastName: newUser.lastName,
-                    ci: newUser.ci,
-                    phone: newUser.phone,
-                    email: newUser.email,
-                    address: newUser.address,
-                    role: newUser.role,
+                    id: userId,
+                    firstName,
+                    lastName,
+                    ci,
+                    phone,
+                    email,
+                    address,
+                    role: 'cliente',
                 }
             },
             { status: 201 }

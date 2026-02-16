@@ -1,7 +1,7 @@
 // src/app/api/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { usersInMemory } from '@/lib/mock/data';
 import { verifyJwt } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
     try {
@@ -15,15 +15,33 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Acceso denegado. Solo administradores.' }, { status: 403 });
         }
 
-        // Devolver usuarios sin hash de contraseña
-        const safeUsers = usersInMemory.map(({ passwordHash, ...user }) => user);
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('*');
 
-        return NextResponse.json(safeUsers, { status: 200 });
+        if (error) {
+            return NextResponse.json({ error: 'Error al obtener usuarios' }, { status: 500 });
+        }
+
+        return NextResponse.json(users.map(user => ({
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            ci: user.ci,
+            phone: user.phone,
+            email: user.email,
+            address: {
+                street: user.address_street,
+                number: user.address_number,
+                between: [user.address_between1, user.address_between2],
+                neighborhood: user.address_neighborhood,
+                municipality: user.address_municipality,
+                province: user.address_province,
+            },
+            role: user.role,
+        })), { status: 200 });
     } catch (error) {
         console.error('Error al obtener usuarios:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

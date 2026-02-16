@@ -1,12 +1,11 @@
 // src/app/api/orders/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createOrderSchema } from '@/lib/validation/order.schema';
-import { ordersInMemory } from '@/lib/mock/data';
 import { verifyJwt } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+import { createOrderSchema } from '@/lib/validation/order.schema';
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. Verificar autenticación
         const token = request.cookies.get('__Secure-auth-token')?.value;
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -17,50 +16,51 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
         }
 
-        // 2. Parsear cuerpo
         const body = await request.json();
-
-        // 3. Validar con Zod
         const result = createOrderSchema.safeParse(body);
         if (!result.success) {
-            return NextResponse.json(
-                { error: 'Datos de orden inválidos', details: result.error.flatten().fieldErrors },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Datos de orden inválidos' }, { status: 400 });
         }
 
         const { items, totalAmount, requiresShipping, shippingCost, finalTotal, shippingAddress } = result.data;
 
-        // 4. Crear nueva orden
+        // Obtener datos del usuario
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('first_name, last_name, email')
+            .eq('id', payload.id)
+            .single();
+
+        if (userError || !user) {
+            return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+        }
+
         const newOrder = {
             id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            customerId: payload.id as string,
-            customerName: 'Nombre temporal', // En producción, se obtiene del usuario
-            customerEmail: 'email@temporal.cu',
+            customer_id: payload.id,
+            customer_name: `${user.first_name} ${user.last_name}`,
+            customer_email: user.email,
+            shipping_address: shippingAddress,
             items,
-            totalAmount,
-            requiresShipping,
-            shippingCost,
-            finalTotal,
-            status: 'pendiente' as const,
-            shippingAddress,
-            createdAt: new Date().toISOString(),
+            total_amount: totalAmount,
+            requires_shipping: requiresShipping,
+            shipping_cost: shippingCost,
+            final_total: finalTotal,
+            status: 'pendiente',
         };
 
-        // 5. Guardar en "base de datos"
-        ordersInMemory.push(newOrder);
+        const { error } = await supabase
+            .from('orders')
+            .insert([newOrder]);
 
-        // 6. Responder
-        return NextResponse.json(
-            { message: 'Orden creada exitosamente', orderId: newOrder.id },
-            { status: 201 }
-        );
+        if (error) {
+            return NextResponse.json({ error: 'Error al crear orden' }, { status: 500 });
+        }
+
+        return NextResponse.json({ message: 'Orden creada exitosamente', orderId: newOrder.id }, { status: 201 });
     } catch (error) {
         console.error('Error al crear orden:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }
 
@@ -76,17 +76,31 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
         }
 
-        // Devolver todas las órdenes (ordenadas por fecha descendente)
-        const allOrders = [...ordersInMemory].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        return NextResponse.json(allOrders, { status: 200 });
+        if (error) {
+            return NextResponse.json({ error: 'Error al obtener órdenes' }, { status: 500 });
+        }
+
+        return NextResponse.json(orders.map(o => ({
+            id: o.id,
+            customerId: o.customer_id,
+            customerName: o.customer_name,
+            customerEmail: o.customer_email,
+            shippingAddress: o.shipping_address,
+            items: o.items,
+            totalAmount: parseFloat(o.total_amount),
+            requiresShipping: o.requires_shipping,
+            shippingCost: parseFloat(o.shipping_cost),
+            finalTotal: parseFloat(o.final_total),
+            status: o.status,
+            createdAt: o.created_at,
+        })), { status: 200 });
     } catch (error) {
         console.error('Error al obtener órdenes:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

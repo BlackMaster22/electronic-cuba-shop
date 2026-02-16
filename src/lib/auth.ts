@@ -47,7 +47,7 @@ export async function hashPassword(password: string): Promise<string> {
 /**
  * Compara una contraseña con su hash
  */
-export async function comparePasswords(
+export async function verifyPassword(
     plainTextPassword: string,
     hashedPassword: string
 ): Promise<boolean> {

@@ -1,7 +1,7 @@
 // src/app/api/users/[id]/role/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { usersInMemory } from '@/lib/mock/data';
 import { verifyJwt } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export async function PUT(
     request: NextRequest,
@@ -30,24 +30,46 @@ export async function PUT(
             return NextResponse.json({ error: 'Rol inválido' }, { status: 400 });
         }
 
-        const index = usersInMemory.findIndex(u => u.id === params.id);
-        if (index === -1) {
+        // Actualizar rol en Supabase
+        const { error } = await supabase
+            .from('users')
+            .update({ role })
+            .eq('id', params.id);
+
+        if (error) {
             return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
         }
 
-        // Actualizar rol
-        usersInMemory[index] = {
-            ...usersInMemory[index],
-            role,
-        };
+        // Obtener usuario actualizado
+        const { data: user } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', params.id)
+            .single();
 
-        const { passwordHash, ...safeUser } = usersInMemory[index];
-        return NextResponse.json(safeUser, { status: 200 });
+        if (!user) {
+            return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+        }
+
+        return NextResponse.json({
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            ci: user.ci,
+            phone: user.phone,
+            email: user.email,
+            address: {
+                street: user.address_street,
+                number: user.address_number,
+                between: [user.address_between1, user.address_between2],
+                neighborhood: user.address_neighborhood,
+                municipality: user.address_municipality,
+                province: user.address_province,
+            },
+            role: user.role,
+        }, { status: 200 });
     } catch (error) {
         console.error('Error al actualizar rol:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

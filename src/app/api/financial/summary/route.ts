@@ -1,7 +1,7 @@
 // src/app/api/financial/summary/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ordersInMemory } from '@/lib/mock/data';
 import { verifyJwt } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
     try {
@@ -15,41 +15,41 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Acceso denegado. Solo administradores.' }, { status: 403 });
         }
 
-        // Obtener parámetros de query (opcional)
         const { searchParams } = new URL(request.url);
-        const period = searchParams.get('period') || 'all'; // all, week, month
+        const period = searchParams.get('period') || 'all';
 
-        // Filtrar órdenes por período (simplificado)
-        let filteredOrders = [...ordersInMemory];
+        let dateFilter = '';
         if (period === 'week') {
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            filteredOrders = ordersInMemory.filter(order =>
-                new Date(order.createdAt) >= oneWeekAgo
-            );
+            dateFilter = 'created_at >= now() - interval \'7 days\'';
         } else if (period === 'month') {
-            const oneMonthAgo = new Date();
-            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-            filteredOrders = ordersInMemory.filter(order =>
-                new Date(order.createdAt) >= oneMonthAgo
-            );
+            dateFilter = 'created_at >= now() - interval \'1 month\'';
         }
 
-        // Calcular métricas
-        const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.finalTotal, 0);
-        const totalOrders = filteredOrders.length;
+        // Total revenue y órdenes
+        let query = supabase.from('orders').select('final_total, status, items');
+        if (dateFilter) {
+            query = query.filter('created_at', 'gte', new Date(Date.now() - (period === 'week' ? 7 : 30) * 24 * 60 * 60 * 1000).toISOString());
+        }
 
-        // Órdenes por estado
+        const { data: orders, error } = await query;
+
+        if (error) {
+            return NextResponse.json({ error: 'Error al obtener órdenes' }, { status: 500 });
+        }
+
+        const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.final_total), 0);
+        const totalOrders = orders.length;
+
         const ordersByStatus = {
-            pendiente: filteredOrders.filter(o => o.status === 'pendiente').length,
-            preparado: filteredOrders.filter(o => o.status === 'preparado').length,
-            enviado: filteredOrders.filter(o => o.status === 'enviado').length,
+            pendiente: orders.filter(o => o.status === 'pendiente').length,
+            preparado: orders.filter(o => o.status === 'preparado').length,
+            enviado: orders.filter(o => o.status === 'enviado').length,
         };
 
-        // Productos más vendidos (simplificado)
+        // Productos más vendidos
         const productSales = new Map<string, { name: string; quantity: number; revenue: number }>();
-        filteredOrders.forEach(order => {
-            order.items.forEach(item => {
+        orders.forEach(order => {
+            order.items.forEach((item: any) => {
                 if (productSales.has(item.productId)) {
                     const existing = productSales.get(item.productId)!;
                     productSales.set(item.productId, {
@@ -71,22 +71,16 @@ export async function GET(request: NextRequest) {
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 5);
 
-        // Crecimiento (comparación con período anterior - simplificado)
-        const growth = 0; // En implementación real, calcularías esto
-
         return NextResponse.json({
             totalRevenue,
             totalOrders,
             ordersByStatus,
             topProducts,
-            growth,
+            growth: 0,
             period,
         }, { status: 200 });
     } catch (error) {
         console.error('Error al obtener resumen financiero:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

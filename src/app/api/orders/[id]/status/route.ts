@@ -1,7 +1,7 @@
 // src/app/api/orders/[id]/status/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ordersInMemory } from '@/lib/mock/data';
 import { verifyJwt } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export async function PUT(
     request: NextRequest,
@@ -26,23 +26,37 @@ export async function PUT(
             return NextResponse.json({ error: 'Estado inválido' }, { status: 400 });
         }
 
-        const index = ordersInMemory.findIndex(o => o.id === id);
-        if (index === -1) {
-            return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 });
+        const { error } = await supabase
+            .from('orders')
+            .update({ status })
+            .eq('id', id);
+
+        if (error) {
+            return NextResponse.json({ error: 'Error al actualizar estado' }, { status: 500 });
         }
 
-        // Actualizar estado
-        ordersInMemory[index] = {
-            ...ordersInMemory[index],
-            status,
-        };
+        const { data: updatedOrder } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-        return NextResponse.json(ordersInMemory[index], { status: 200 });
+        return NextResponse.json({
+            id: updatedOrder.id,
+            customerId: updatedOrder.customer_id,
+            customerName: updatedOrder.customer_name,
+            customerEmail: updatedOrder.customer_email,
+            shippingAddress: updatedOrder.shipping_address,
+            items: updatedOrder.items,
+            totalAmount: parseFloat(updatedOrder.total_amount),
+            requiresShipping: updatedOrder.requires_shipping,
+            shippingCost: parseFloat(updatedOrder.shipping_cost),
+            finalTotal: parseFloat(updatedOrder.final_total),
+            status: updatedOrder.status,
+            createdAt: updatedOrder.created_at,
+        }, { status: 200 });
     } catch (error) {
         console.error('Error al actualizar estado:', error);
-        return NextResponse.json(
-            { error: 'Error interno del servidor' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }
