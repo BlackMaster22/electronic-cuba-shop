@@ -6,7 +6,7 @@ import { productUpdateSchema } from '@/lib/validation/product.schema';
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const token = request.cookies.get('__Secure-auth-token')?.value;
@@ -19,7 +19,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Solo administradores pueden editar productos' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
         const result = productUpdateSchema.safeParse(body);
         if (!result.success) {

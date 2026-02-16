@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const token = request.cookies.get('__Secure-auth-token')?.value;
@@ -18,7 +18,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
         const { status } = body;
 

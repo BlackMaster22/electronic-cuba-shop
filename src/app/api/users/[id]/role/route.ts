@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const token = request.cookies.get('__Secure-auth-token')?.value;
@@ -18,8 +18,11 @@ export async function PUT(
             return NextResponse.json({ error: 'Acceso denegado. Solo administradores.' }, { status: 403 });
         }
 
+        // 👇 CORRECCIÓN: await params para obtener el objeto real
+        const { id } = await params;
+
         // Evitar que un admin se quite su propio rol
-        if (params.id === payload.id) {
+        if (id === payload.id) {
             return NextResponse.json({ error: 'No puedes modificar tu propio rol' }, { status: 400 });
         }
 
@@ -34,7 +37,7 @@ export async function PUT(
         const { error } = await supabase
             .from('users')
             .update({ role })
-            .eq('id', params.id);
+            .eq('id', id); // 👈 usa `id`, no `params.id`
 
         if (error) {
             return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -44,7 +47,7 @@ export async function PUT(
         const { data: user } = await supabase
             .from('users')
             .select('*')
-            .eq('id', params.id)
+            .eq('id', id)
             .single();
 
         if (!user) {

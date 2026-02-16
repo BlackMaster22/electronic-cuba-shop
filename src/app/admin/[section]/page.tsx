@@ -1,4 +1,5 @@
 // src/app/admin/[section]/page.tsx
+'use client';
 import { useParams } from 'next/navigation';
 
 export default function AdminSectionPage() {
