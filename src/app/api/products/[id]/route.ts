@@ -65,7 +65,7 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const token = request.cookies.get('__Secure-auth-token')?.value;
@@ -78,7 +78,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Solo administradores pueden eliminar productos' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         // Verificar si hay órdenes con este producto
         const { data: orders, error: orderCheckError } = await supabase

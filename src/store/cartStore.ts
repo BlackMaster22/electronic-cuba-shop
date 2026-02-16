@@ -6,7 +6,7 @@ import { Product } from '@/types';
 export interface CartItem {
     productId: string;
     name: string;
-    image: string;
+    image?: string;
     price: number;
     quantity: number;
 }
