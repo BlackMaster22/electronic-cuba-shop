@@ -66,7 +66,7 @@ export function UserList({ users, onUpdateRole }: UserListProps) {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => onUpdateRole(user.id, 'cliente')}
-                                        className="mr-2"
+                                        className="mr-2 dark:text-gray-200"
                                     >
                                         Convertir a cliente
                                     </Button>
@@ -76,7 +76,7 @@ export function UserList({ users, onUpdateRole }: UserListProps) {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => onUpdateRole(user.id, 'vendedor')}
-                                        className="mr-2"
+                                        className="mr-2 dark:text-gray-200"
                                     >
                                         Convertir a vendedor
                                     </Button>
@@ -86,6 +86,7 @@ export function UserList({ users, onUpdateRole }: UserListProps) {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => onUpdateRole(user.id, 'admin')}
+                                        className="mr-2 dark:text-gray-200"
                                     >
                                         Hacer admin
                                     </Button>

@@ -44,9 +44,7 @@ export default function CategoriesPage() {
     };
 
     const handleDelete = (id: string) => {
-        if (confirm('¿Estás seguro de eliminar esta categoría?')) {
-            deleteCategory(id);
-        }
+        deleteCategory(id);
     };
 
     if (isLoading) {

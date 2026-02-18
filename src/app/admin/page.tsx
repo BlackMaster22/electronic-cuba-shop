@@ -1,0 +1,15 @@
+// src/app/admin/page.tsx
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function AdminHome() {
+    const router = useRouter();
+
+    useEffect(() => {
+        router.replace('/admin/products');
+    }, [router]);
+
+    return <div>Cargando...</div>;
+}

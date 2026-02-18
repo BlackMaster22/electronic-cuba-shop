@@ -1,15 +1,21 @@
 // src/hooks/useUserOrders.ts
 import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { Order } from '@/types'; // 👈 Importa el tipo
+import { Order } from '@/types';
 
 export function useUserOrders() {
-    return useQuery<Order[]>({ // 👈 Tipa el resultado como Order[]
+    return useQuery<Order[]>({
         queryKey: ['userOrders'],
         queryFn: async () => {
-            const response = await api.get<Order[]>('/orders/me');
-            return response.data;
+            const res = await fetch('/api/orders/me', {
+                credentials: 'include', // 👈 Envía cookies de autenticación
+            });
+            if (!res.ok) {
+                // Si es 401, no lanzamos logout → solo error
+                throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
         },
         staleTime: 30 * 1000,
+        retry: false, // Evita reintentos que causen múltiples 401
     });
 }

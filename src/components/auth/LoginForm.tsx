@@ -38,19 +38,17 @@ export function LoginForm() {
                 const result = await response.json();
                 const role = result.user.role;
 
-                // Redirigir según rol
                 if (role === 'cliente') {
                     window.location.href = '/dashboard';
                 } else {
                     window.location.href = '/admin';
                 }
             } else {
-                const error = await response.json();
-                console.error('Error de login:', error);
+                const errorData = await response.json().catch(() => ({}));
                 alert('Credenciales inválidas. Por favor, inténtalo de nuevo.');
             }
         } catch (error) {
-            console.error('Error de red:', error);
+            console.error('Error de red o runtime:', error);
             alert('Error de conexión. Por favor, verifica tu internet.');
         } finally {
             setIsSubmitting(false);
@@ -111,6 +109,15 @@ export function LoginForm() {
                     </Link>
                 </p>
             </form>
+            <Link href="/" >
+                <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-2 mt-4"
+                >
+                    Regresar
+                </Button>
+            </Link>
         </div>
     );
 }

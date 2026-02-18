@@ -1,22 +1,16 @@
 // src/lib/auth.ts
-import { serialize, parse } from 'cookie';
+import { serialize } from 'cookie';
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT, jwtVerify } from 'jose';
 import { hash, compare } from 'bcryptjs';
 
-// Clave secreta para JWT (¡debe estar en variables de entorno!)
 const JWT_SECRET = new TextEncoder().encode(
     process.env.JWT_SECRET || 'fallback-secret-for-dev-only'
 );
 
 const CSRF_SECRET = process.env.CSRF_SECRET || 'fallback-csrf-secret';
-
-// Duración del token (7 días)
 const TOKEN_DURATION = '7d';
 
-/**
- * Genera un token JWT firmado
- */
 export async function generateJwt(payload: any): Promise<string> {
     return new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
@@ -25,9 +19,6 @@ export async function generateJwt(payload: any): Promise<string> {
         .sign(JWT_SECRET);
 }
 
-/**
- * Verifica y decodifica un token JWT
- */
 export async function verifyJwt(token: string): Promise<any | null> {
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
@@ -37,16 +28,10 @@ export async function verifyJwt(token: string): Promise<any | null> {
     }
 }
 
-/**
- * Hashea una contraseña
- */
 export async function hashPassword(password: string): Promise<string> {
-    return hash(password, 12); // 12 rounds
+    return hash(password, 12);
 }
 
-/**
- * Compara una contraseña con su hash
- */
 export async function verifyPassword(
     plainTextPassword: string,
     hashedPassword: string
@@ -54,44 +39,52 @@ export async function verifyPassword(
     return compare(plainTextPassword, hashedPassword);
 }
 
-/**
- * Establece cookies de autenticación seguras
- */
+// 🔑 Nueva función: obtener nombre de cookie según entorno
+function getAuthCookieName(): string {
+    return process.env.NODE_ENV === 'production' ? '__Secure-auth-token' : 'auth-token';
+}
+
 export function setAuthCookies(
     response: NextResponse,
     jwtToken: string,
     csrfToken: string
 ): NextResponse {
-    // Cookie HTTP-only para el JWT (inaccesible desde JS)
-    const jwtCookie = serialize('__Secure-auth-token', jwtToken, {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secure = isProduction;
+    const domain = isProduction ? '.electroniccubashop.cu' : undefined;
+    const authCookieName = getAuthCookieName();
+
+    const jwtCookie = serialize(authCookieName, jwtToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure,
         sameSite: 'lax',
         path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 días
-        domain: process.env.NODE_ENV === 'production' ? '.electroniccubashop.cu' : undefined,
+        maxAge: 60 * 60 * 24 * 7,
+        domain,
     });
 
-    // Cookie accesible desde JS para el CSRF token
     const csrfCookie = serialize('csrf-token', csrfToken, {
         httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
+        secure,
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 7,
     });
 
-    response.headers.set('Set-Cookie', `${jwtCookie}, ${csrfCookie}`);
+    // 👇 Corrección: usar append en lugar de set para múltiples cookies
+    response.headers.append('Set-Cookie', jwtCookie);
+    response.headers.append('Set-Cookie', csrfCookie);
     return response;
 }
 
-/**
- * Limpia las cookies de autenticación
- */
 export function clearAuthCookies(response: NextResponse): NextResponse {
-    const jwtCookie = serialize('__Secure-auth-token', '', {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secure = isProduction;
+    const authCookieName = getAuthCookieName();
+
+    const jwtCookie = serialize(authCookieName, '', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure,
         sameSite: 'lax',
         path: '/',
         maxAge: 0,
@@ -99,31 +92,31 @@ export function clearAuthCookies(response: NextResponse): NextResponse {
 
     const csrfCookie = serialize('csrf-token', '', {
         httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
+        secure,
         sameSite: 'lax',
         path: '/',
         maxAge: 0,
     });
 
-    response.headers.set('Set-Cookie', `${jwtCookie}, ${csrfCookie}`);
+    response.headers.append('Set-Cookie', jwtCookie);
+    response.headers.append('Set-Cookie', csrfCookie);
     return response;
 }
 
-/**
- * Genera un token CSRF aleatorio
- */
 export function generateCsrfToken(): string {
     return Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 }
 
-/**
- * Verifica el token CSRF en una solicitud
- */
 export function verifyCsrfToken(request: NextRequest): boolean {
     const csrfCookie = request.cookies.get('csrf-token')?.value;
     const csrfHeader = request.headers.get('X-CSRF-Token');
-
     return !!csrfCookie && !!csrfHeader && csrfCookie === csrfHeader;
+}
+
+// 🔑 Nueva función: leer token de la cookie correcta
+export function getAuthTokenFromRequest(request: NextRequest): string | undefined {
+    const cookieName = getAuthCookieName();
+    return request.cookies.get(cookieName)?.value;
 }

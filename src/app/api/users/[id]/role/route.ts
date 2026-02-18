@@ -1,6 +1,6 @@
 // src/app/api/users/[id]/role/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 export async function PUT(
@@ -8,7 +8,7 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }

@@ -3,6 +3,7 @@
 
 import { DashboardHeader } from '@/components/layout/Header';
 import { OrderHistory } from '@/components/products/OrderHistory';
+import { ProductExplorer } from '@/components/products/ProductExplorer';
 import { Metadata } from 'next';
 
 export const meta: Metadata = {
@@ -37,16 +38,7 @@ export default function DashboardPage() {
                 {/* Separador */}
                 <div className="my-8 border-t border-gray-200 dark:border-gray-700"></div>
 
-                {/* Mensaje informativo (productos se gestionan desde admin) */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-                    <h2 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-                        Explorar productos
-                    </h2>
-                    <p className="text-blue-700 dark:text-blue-300">
-                        Los productos disponibles se muestran en tiempo real desde nuestro catálogo.
-                        Si no ves productos aquí, contacta con soporte o visita más tarde.
-                    </p>
-                </div>
+                <ProductExplorer />
             </main>
         </div>
     );

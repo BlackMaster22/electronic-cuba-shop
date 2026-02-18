@@ -18,16 +18,18 @@ export const useUserStore = create<UserState>()(
             clearUser: () => set({ user: null }),
             fetchUser: async () => {
                 try {
-                    const res = await fetch('/api/users/me');
+                    const res = await fetch('/api/users/me', {
+                        credentials: 'include', // 👈 Asegura que se envíen las cookies
+                    });
                     if (res.ok) {
                         const user = await res.json();
                         set({ user });
-                    } else {
-                        set({ user: null });
                     }
+                    // ❌ NO borramos el usuario si falla
+                    // El middleware ya protege las rutas; no necesitamos "logout" aquí
                 } catch (error) {
                     console.error('Error fetching user:', error);
-                    set({ user: null });
+                    // No limpiamos el estado → evita redirección innecesaria
                 }
             },
         }),

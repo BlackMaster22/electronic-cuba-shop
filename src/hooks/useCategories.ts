@@ -1,15 +1,29 @@
 // src/hooks/useCategories.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
 import { Category } from '@/types';
 
-export function useCategories() {
-    return useQuery({
-        queryKey: ['categories'],
-        queryFn: async () => {
-            const response = await api.get<Category[]>('/categories');
-            return response.data;
+const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    const res = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
         },
+    });
+
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP ${res.status}`);
+    }
+
+    return res.json();
+};
+
+export function useCategories() {
+    return useQuery<Category[]>({
+        queryKey: ['categories'],
+        queryFn: () => fetchWithAuth('/api/categories'),
     });
 }
 
@@ -17,10 +31,11 @@ export function useCreateCategory() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (categoryData: any) => {
-            const response = await api.post('/categories', categoryData);
-            return response.data;
-        },
+        mutationFn: (categoryData: any) =>
+            fetchWithAuth('/api/categories', {
+                method: 'POST',
+                body: JSON.stringify(categoryData),
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['categories'] });
         },
@@ -31,10 +46,11 @@ export function useUpdateCategory() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: { name: string } }) => {
-            const response = await api.put(`/categories/${id}`, data);
-            return response.data;
-        },
+        mutationFn: ({ id, data }: { id: string; data: { name: string } }) =>
+            fetchWithAuth(`/api/categories/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data),
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['categories'] });
         },
@@ -45,10 +61,10 @@ export function useDeleteCategory() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (id: string) => {
-            const response = await api.delete(`/categories/${id}`);
-            return response.data;
-        },
+        mutationFn: (id: string) =>
+            fetchWithAuth(`/api/categories/${id}`, {
+                method: 'DELETE',
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['categories'] });
         },

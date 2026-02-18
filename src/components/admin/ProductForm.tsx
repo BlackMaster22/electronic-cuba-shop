@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Product } from '@/types';
 import { Button } from '../ui/Button';
+import { useCategories } from '@/hooks/useCategories';
 
 interface ProductFormProps {
     product?: Product | null;
@@ -11,21 +12,13 @@ interface ProductFormProps {
     onCancel: () => void;
 }
 
-// Categorías temporales (hasta implementar hook useCategories)
-const TEMP_CATEGORIES = [
-    { id: 'cat-1', name: 'Televisores' },
-    { id: 'cat-2', name: 'Celulares' },
-    { id: 'cat-3', name: 'Electrodomésticos' },
-    { id: 'cat-4', name: 'Audio' },
-    { id: 'cat-5', name: 'Computación' },
-];
-
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+    const { data: categories = [], isLoading: categoriesLoading } = useCategories();
     const [formData, setFormData] = useState({
         name: product?.name || '',
         description: product?.description || '',
         price: product?.price?.toString() || '',
-        categoryId: product?.categoryId || TEMP_CATEGORIES[0]?.id || '',
+        categoryId: product?.categoryId || (categories.length > 0 ? categories[0].id : '') ,
         stock: product?.stock?.toString() || '',
         image: product?.image || '',
     });
@@ -43,7 +36,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             price: parseFloat(formData.price),
             stock: parseInt(formData.stock, 10),
         };
-
+        console.log('La data',data)
         onSubmit(data);
     };
 
@@ -130,7 +123,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         required
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
                     >
-                        {TEMP_CATEGORIES.map(category => (
+                        <option value="">Selecciona una categoría</option>
+                        {categories.map(category => (
                             <option key={category.id} value={category.id}>
                                 {category.name}
                             </option>
@@ -154,7 +148,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                    <Button type="submit" className="flex-1">
+                    <Button type="submit" className="flex-1" disabled={!formData.categoryId}>
                         {product ? 'Actualizar' : 'Crear producto'}
                     </Button>
                     <Button type="button" variant="outline" onClick={onCancel} className="flex-1">

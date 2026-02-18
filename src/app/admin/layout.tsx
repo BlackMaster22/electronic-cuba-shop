@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Button } from '@/components/ui/Button';
 import { Menu } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function AdminLayout({
     children,
@@ -34,7 +35,7 @@ export default function AdminLayout({
         <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
             {/* Sidebar (oculto en móvil si no está abierto) */}
             <div
-                className={`fixed md:static inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+                className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
                     }`}
             >
                 <AdminSidebar role={user.role} />
@@ -49,7 +50,7 @@ export default function AdminLayout({
             )}
 
             {/* Contenido principal */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col ml-0 md:ml-64">
                 {/* Header */}
                 <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
                     <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -69,10 +70,10 @@ export default function AdminLayout({
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <span className="text-gray-700 dark:text-gray-300 hidden sm:block">
-                                {user.firstName}
+                            <ThemeToggle />
+                            <span className="mr-4 text-gray-700 dark:text-gray-300 hidden sm:block">
+                                {user.firstName}  {user.lastName}
                             </span>
-                            {/* Logout o ThemeToggle aquí si se desea */}
                         </div>
                     </div>
                 </header>

@@ -36,9 +36,7 @@ export default function ProductsPage() {
     };
 
     const handleDelete = (id: string) => {
-        if (confirm('¿Estás seguro de eliminar este producto? Esta acción no se puede deshacer.')) {
             deleteProduct(id);
-        }
     };
 
     if (isLoading) {

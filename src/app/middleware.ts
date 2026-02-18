@@ -1,6 +1,6 @@
 // src/app/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 
 const PUBLIC_ROUTES = [
     '/',
@@ -11,8 +11,8 @@ const PUBLIC_ROUTES = [
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
-    // Obtener token y verificar autenticación
-    const token = request.cookies.get('__Secure-auth-token')?.value;
+    // 👇 Usa la función segura
+    const token = getAuthTokenFromRequest(request);
     const isAuthenticated = !!token;
     let userRole = null;
 

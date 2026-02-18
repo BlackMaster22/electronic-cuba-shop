@@ -18,7 +18,7 @@ export function Footer() {
                             <p>Vedado, Plaza de la Revolución</p>
                             <p>La Habana, Cuba</p>
                             <p>Tel: +53 51234567</p>
-                            <p>Email: info@electroniccubashop.cu</p>
+                            <p>Email: electroniccubashop@gmail.com</p>
                         </address>
                     </div>
 

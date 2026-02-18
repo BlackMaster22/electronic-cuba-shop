@@ -1,7 +1,6 @@
 // src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { registerSchema } from '@/lib/validation/user.schema';
-import { hashPassword } from '@/lib/auth';
 import { generateJwt, generateCsrfToken, setAuthCookies } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const hashedPassword = await hashPassword(password);
+        const hashedPassword = password;
         const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
         // Insertar en Supabase

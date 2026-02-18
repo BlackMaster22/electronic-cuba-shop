@@ -8,6 +8,7 @@ import { profileUpdateSchema } from '@/lib/validation/user.schema';
 import { useUserStore } from '@/store/userStore';
 import { Button } from '../ui/Button';
 import api from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 type ProfileFormData = {
     firstName: string;
@@ -27,10 +28,11 @@ export function ProfileForm() {
     const { user, fetchUser } = useUserStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const router = useRouter();
 
     const {
         register,
-        handleSubmit,
+        handleSubmit, // Lo usaremos manualmente en el botón
         reset,
         formState: { errors, isDirty, isValid },
     } = useForm<ProfileFormData>({
@@ -62,7 +64,7 @@ export function ProfileForm() {
             if (response.status === 200) {
                 useUserStore.getState().setUser(response.data);
                 setSubmitStatus('success');
-                reset(formData); // Opcional: sincroniza el form con los datos guardados
+                reset(formData);
             } else {
                 throw new Error('Error al actualizar');
             }
@@ -74,9 +76,14 @@ export function ProfileForm() {
         }
     };
 
+    const handleGoBack = () => {
+        router.back();
+    };
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* El formulario ahora solo contiene los inputs */}
+            <form id="profile-form" className="space-y-6">
                 {/* Nombre y Apellidos */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -229,7 +236,7 @@ export function ProfileForm() {
                     </div>
                 </div>
 
-                {/* Mensajes de estado */}
+                {/* Mensajes de estado (fuera del flow del submit visual pero dentro del form o fuera, aquí lo dejo visible) */}
                 {submitStatus === 'success' && (
                     <p className="text-green-600 dark:text-green-400 text-sm">
                         ¡Perfil actualizado correctamente!
@@ -240,16 +247,30 @@ export function ProfileForm() {
                         Error al actualizar. Por favor, inténtalo de nuevo.
                     </p>
                 )}
+            </form>
 
-                {/* Botón de submit */}
+            {/* Contenedor de Botones Alineados */}
+            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                {/* Botón Guardar */}
                 <Button
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmit(onSubmit)}
                     disabled={!isDirty || !isValid || isSubmitting}
-                    className="w-full py-2"
+                    className="flex-1 py-2.5" // flex-1 asegura que ocupen el mismo ancho disponible
                 >
                     {isSubmitting ? 'Guardando...' : 'Guardar cambios'}
                 </Button>
-            </form>
+
+                {/* Botón Regresar */}
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleGoBack}
+                    className="flex-1 py-2.5" // Mismo alto y ancho relativo
+                >
+                    ← Regresar
+                </Button>
+            </div>
         </div>
     );
 }

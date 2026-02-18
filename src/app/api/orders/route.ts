@@ -1,12 +1,12 @@
 // src/app/api/orders/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { createOrderSchema } from '@/lib/validation/order.schema';
 
 export async function POST(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
@@ -24,7 +24,23 @@ export async function POST(request: NextRequest) {
 
         const { items, totalAmount, requiresShipping, shippingCost, finalTotal, shippingAddress } = result.data;
 
-        // Obtener datos del usuario
+        // 🔒 Verificar stock disponible para todos los productos
+        for (const item of items) {
+            const { data: product } = await supabase
+                .from('products')
+                .select('stock')
+                .eq('id', item.productId)
+                .single();
+
+            if (!product || product.stock < item.quantity) {
+                return NextResponse.json(
+                    { error: `Stock insuficiente para "${item.productName}"` },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // 👤 Obtener datos del usuario
         const { data: user, error: userError } = await supabase
             .from('users')
             .select('first_name, last_name, email')
@@ -35,6 +51,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
         }
 
+        // 📦 Crear la orden
         const newOrder = {
             id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             customer_id: payload.id,
@@ -49,12 +66,28 @@ export async function POST(request: NextRequest) {
             status: 'pendiente',
         };
 
-        const { error } = await supabase
+        const { error: orderError } = await supabase
             .from('orders')
             .insert([newOrder]);
 
-        if (error) {
+        if (orderError) {
             return NextResponse.json({ error: 'Error al crear orden' }, { status: 500 });
+        }
+
+        // ✅ Reducir stock de cada producto
+        for (const item of items) {
+            const { data: product } = await supabase
+                .from('products')
+                .select('stock')
+                .eq('id', item.productId)
+                .single();
+
+            if (product && product.stock >= item.quantity) {
+                await supabase
+                    .from('products')
+                    .update({ stock: product.stock - item.quantity })
+                    .eq('id', item.productId);
+            }
         }
 
         return NextResponse.json({ message: 'Orden creada exitosamente', orderId: newOrder.id }, { status: 201 });
@@ -66,7 +99,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }

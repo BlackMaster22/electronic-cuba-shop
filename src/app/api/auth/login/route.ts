@@ -1,15 +1,13 @@
 // src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { loginSchema } from '@/lib/validation/user.schema';
-import { verifyPassword } from '@/lib/auth';
-import { generateJwt, generateCsrfToken, setAuthCookies } from '@/lib/auth';
+import { generateJwt, generateCsrfToken, setAuthCookies } from '@/lib/auth'; // 👈 removido getAuthTokenFromRequest
 import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const result = loginSchema.safeParse(body);
-
         if (!result.success) {
             return NextResponse.json(
                 { error: 'Datos inválidos', details: result.error.flatten().fieldErrors },
@@ -30,8 +28,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
         }
 
-        const isValid = await verifyPassword(password, users.password_hash);
-        if (!isValid) {
+        if (password !== users.password_hash) {
             return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
         }
 
@@ -57,14 +54,14 @@ export async function POST(request: NextRequest) {
                         province: users.address_province,
                     },
                     role: users.role,
-                }
+                },
             },
             { status: 200 }
         );
 
         return setAuthCookies(response, jwtToken, csrfToken);
     } catch (error) {
-        console.error('Error en login:', error);
+        console.error('Error inesperado:', error);
         return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

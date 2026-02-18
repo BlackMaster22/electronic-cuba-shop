@@ -1,18 +1,18 @@
 // src/app/api/categories/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { categorySchema } from '@/lib/validation/category.schema';
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
 
         const payload = await verifyJwt(token);
-        if (!payload || !['admin', 'vendedor'].includes(payload.role as string)) {
+        if (!payload || !['admin', 'vendedor', 'cliente'].includes(payload.role as string)) {
             return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
         }
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }

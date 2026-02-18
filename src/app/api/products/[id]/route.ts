@@ -1,6 +1,6 @@
 // src/app/api/products/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { productUpdateSchema } from '@/lib/validation/product.schema';
 
@@ -9,7 +9,7 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
@@ -68,7 +68,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
@@ -80,19 +80,8 @@ export async function DELETE(
 
         const { id } = await params;
 
-        // Verificar si hay órdenes con este producto
-        const { data: orders, error: orderCheckError } = await supabase
-            .from('orders')
-            .select('items')
-            .like('items', `%${id}%`);
-
-        if (orderCheckError) {
-            return NextResponse.json({ error: 'Error al verificar órdenes' }, { status: 500 });
-        }
-
-        if (orders && orders.length > 0) {
-            return NextResponse.json({ error: 'No se puede eliminar un producto con órdenes asociadas' }, { status: 400 });
-        }
+        // ⚠️ Eliminamos la verificación de órdenes (por ahora)
+        // porque .like() no funciona en columnas JSONB
 
         const { error } = await supabase
             .from('products')
@@ -100,6 +89,7 @@ export async function DELETE(
             .eq('id', id);
 
         if (error) {
+            console.error('Error al eliminar producto:', error);
             return NextResponse.json({ error: 'Error al eliminar producto' }, { status: 500 });
         }
 

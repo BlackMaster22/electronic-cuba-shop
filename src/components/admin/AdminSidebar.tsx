@@ -1,14 +1,14 @@
 // src/components/admin/AdminSidebar.tsx
 import Link from 'next/link';
-import { Home, Package, Users, BarChart3, Layers, Settings } from 'lucide-react';
+import { LogOut, Package, Users, BarChart3, Layers, Settings } from 'lucide-react';
 import { UserRole } from '@/types';
+import { Button } from '../ui/Button';
 
 interface AdminSidebarProps {
     role: UserRole;
 }
 
 const sidebarItems = [
-    { id: 'dashboard', name: 'Inicio', icon: Home, roles: ['admin', 'vendedor'] },
     { id: 'products', name: 'Gestión de Productos', icon: Package, roles: ['admin', 'vendedor'] },
     { id: 'categories', name: 'Gestión de Categorías', icon: Layers, roles: ['admin', 'vendedor'] },
     { id: 'orders', name: 'Historial de Ventas', icon: BarChart3, roles: ['admin', 'vendedor'] },
@@ -19,9 +19,18 @@ const sidebarItems = [
 export function AdminSidebar({ role }: AdminSidebarProps) {
     const filteredItems = sidebarItems.filter(item => item.roles.includes(role));
 
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+        }
+    };
+
     return (
         <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menú</h2>
             </div>
 
@@ -40,6 +49,14 @@ export function AdminSidebar({ role }: AdminSidebarProps) {
                     );
                 })}
             </nav>
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="mb-6 w-auto text-gray-700 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400"
+            >
+                Cerrar sesión <LogOut className="ml-2 h-4 w-4" />
+            </Button>
         </div>
     );
 }

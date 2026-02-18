@@ -61,7 +61,6 @@ export function ProductList({ products, onEdit, onDelete, onCreate }: ProductLis
                             <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                 <td className="px-4 py-3 whitespace-nowrap">
                                     <div className="font-medium text-gray-900 dark:text-white">{product.name}</div>
-                                    <div className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{product.description}</div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {product.categoryId}

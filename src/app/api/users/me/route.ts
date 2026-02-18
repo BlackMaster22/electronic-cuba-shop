@@ -1,12 +1,12 @@
 // src/app/api/users/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { profileUpdateSchema } from '@/lib/validation/user.schema';
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }

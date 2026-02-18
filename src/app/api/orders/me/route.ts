@@ -1,11 +1,12 @@
 // src/app/api/orders/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyJwt } from '@/lib/auth';
+import { verifyJwt, getAuthTokenFromRequest } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.cookies.get('__Secure-auth-token')?.value;
+        const token = getAuthTokenFromRequest(request);
+
         if (!token) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }

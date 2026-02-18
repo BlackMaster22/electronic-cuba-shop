@@ -10,9 +10,7 @@ export default function UsersPage() {
     const { mutate: updateUserRole } = useUpdateUserRole();
 
     const handleUpdateRole = (userId: string, role: UserRole) => {
-        if (confirm(`¿Estás seguro de cambiar el rol de este usuario a ${role}?`)) {
             updateUserRole({ userId, role });
-        }
     };
 
     if (isLoading) {

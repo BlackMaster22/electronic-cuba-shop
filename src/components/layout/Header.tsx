@@ -27,7 +27,7 @@ export function DashboardHeader() {
     const handleLogout = async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = '/auth/login';
+            window.location.href = '/';
         } catch (error) {
             console.error('Error al cerrar sesión:', error);
         }
