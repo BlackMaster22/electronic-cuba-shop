@@ -4,13 +4,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT, jwtVerify } from 'jose';
 import { hash, compare } from 'bcryptjs';
 
+// 🔑 Secretos desde variables de entorno
 const JWT_SECRET = new TextEncoder().encode(
     process.env.JWT_SECRET || 'fallback-secret-for-dev-only'
 );
-
 const CSRF_SECRET = process.env.CSRF_SECRET || 'fallback-csrf-secret';
+
 const TOKEN_DURATION = '7d';
 
+// 🪪 Generar JWT
 export async function generateJwt(payload: any): Promise<string> {
     return new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
@@ -19,6 +21,7 @@ export async function generateJwt(payload: any): Promise<string> {
         .sign(JWT_SECRET);
 }
 
+// 🔍 Verificar JWT
 export async function verifyJwt(token: string): Promise<any | null> {
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
@@ -28,10 +31,12 @@ export async function verifyJwt(token: string): Promise<any | null> {
     }
 }
 
+// 🔒 Hashear contraseña
 export async function hashPassword(password: string): Promise<string> {
     return hash(password, 12);
 }
 
+// ✅ Verificar contraseña
 export async function verifyPassword(
     plainTextPassword: string,
     hashedPassword: string
@@ -39,28 +44,26 @@ export async function verifyPassword(
     return compare(plainTextPassword, hashedPassword);
 }
 
-// 🔑 Nueva función: obtener nombre de cookie según entorno
-function getAuthCookieName(): string {
-    return process.env.NODE_ENV === 'production' ? '__Secure-auth-token' : 'auth-token';
-}
+// 🍪 Nombre fijo de la cookie (sin __Secure-)
+const AUTH_COOKIE_NAME = 'auth-token';
 
+// 🧾 Establecer cookies de autenticación
 export function setAuthCookies(
     response: NextResponse,
     jwtToken: string,
     csrfToken: string
 ): NextResponse {
     const isProduction = process.env.NODE_ENV === 'production';
-    const secure = isProduction;
-    const domain = isProduction ? '.electroniccubashop.cu' : undefined;
-    const authCookieName = getAuthCookieName();
+    const secure = isProduction; // true en Vercel (HTTPS obligatorio)
 
-    const jwtCookie = serialize(authCookieName, jwtToken, {
+    // ⚠️ No usar `domain` en Vercel a menos que tengas un dominio personalizado
+    const jwtCookie = serialize(AUTH_COOKIE_NAME, jwtToken, {
         httpOnly: true,
         secure,
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 7,
-        domain,
+        // domain: undefined → se hereda del host actual (vercel.app o localhost)
     });
 
     const csrfCookie = serialize('csrf-token', csrfToken, {
@@ -71,18 +74,17 @@ export function setAuthCookies(
         maxAge: 60 * 60 * 24 * 7,
     });
 
-    // 👇 Corrección: usar append en lugar de set para múltiples cookies
     response.headers.append('Set-Cookie', jwtCookie);
     response.headers.append('Set-Cookie', csrfCookie);
     return response;
 }
 
+// 🧹 Limpiar cookies
 export function clearAuthCookies(response: NextResponse): NextResponse {
     const isProduction = process.env.NODE_ENV === 'production';
     const secure = isProduction;
-    const authCookieName = getAuthCookieName();
 
-    const jwtCookie = serialize(authCookieName, '', {
+    const jwtCookie = serialize(AUTH_COOKIE_NAME, '', {
         httpOnly: true,
         secure,
         sameSite: 'lax',
@@ -103,20 +105,21 @@ export function clearAuthCookies(response: NextResponse): NextResponse {
     return response;
 }
 
+// 🎲 Generar token CSRF
 export function generateCsrfToken(): string {
     return Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 }
 
+// 🔐 Verificar token CSRF
 export function verifyCsrfToken(request: NextRequest): boolean {
     const csrfCookie = request.cookies.get('csrf-token')?.value;
     const csrfHeader = request.headers.get('X-CSRF-Token');
     return !!csrfCookie && !!csrfHeader && csrfCookie === csrfHeader;
 }
 
-// 🔑 Nueva función: leer token de la cookie correcta
+// 📥 Obtener token de autenticación desde la cookie correcta
 export function getAuthTokenFromRequest(request: NextRequest): string | undefined {
-    const cookieName = getAuthCookieName();
-    return request.cookies.get(cookieName)?.value;
+    return request.cookies.get(AUTH_COOKIE_NAME)?.value;
 }
